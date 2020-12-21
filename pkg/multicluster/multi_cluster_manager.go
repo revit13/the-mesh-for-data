@@ -4,6 +4,7 @@ import (
 	"github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+        networkingv1 "k8s.io/api/networking/v1"
 )
 
 type ClusterLister interface {
@@ -13,7 +14,7 @@ type ClusterLister interface {
 type ClusterManager interface {
 	ClusterLister
 	GetBlueprint(cluster string, namespace string, name string) (*v1alpha1.Blueprint, error)
-	CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint) error
+	CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint, policies ...*networkingv1.NetworkPolicy) error
 	UpdateBlueprint(cluster string, blueprint *v1alpha1.Blueprint) error
 	DeleteBlueprint(cluster string, namespace string, name string) error
 }

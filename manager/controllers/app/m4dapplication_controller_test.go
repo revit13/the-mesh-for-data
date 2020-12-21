@@ -17,6 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -595,7 +596,6 @@ var _ = Describe("M4DApplication Controller", func() {
 				Eventually(func() error {
 					return k8sClient.Get(context.Background(), client.ObjectKey{Namespace: "", Name: ns}, namespace)
 				}, timeout, interval).Should(Succeed())
-
 				// The blueprint has to be created in the blueprint namespace
 				blueprint := &apiv1alpha1.Blueprint{}
 				blueprintObjectKey := client.ObjectKey{Namespace: ns, Name: application.Name}
@@ -604,12 +604,16 @@ var _ = Describe("M4DApplication Controller", func() {
 					return k8sClient.Get(context.Background(), blueprintObjectKey, blueprint)
 				}, timeout, interval).Should(Succeed())
 
+				By("Expect network policy to be created")
+				NetworkPolicy := &networkingv1.NetworkPolicy{}
+				Eventually(func() error {
+					return k8sClient.Get(context.Background(), client.ObjectKey{Namespace: ns, Name: "allow-workload-ingress-rule"}, NetworkPolicy)
+				}, timeout, interval).Should(Succeed())
 				By("Expect blueprint to be ready at some point")
 				Eventually(func() bool {
 					Expect(k8sClient.Get(context.Background(), blueprintObjectKey, blueprint)).To(Succeed())
 					return blueprint.Status.ObservedState.Ready
 				}, timeout*10, interval).Should(BeTrue())
-
 				// Extra long timeout as deploying the arrow-flight module on a new cluster may take some time
 				// depending on the download speed
 				By("Expecting M4DApplication to eventually be ready")

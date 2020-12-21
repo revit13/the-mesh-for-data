@@ -3,9 +3,11 @@ package local
 import (
 	"context"
 	"fmt"
+
 	"github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/pkg/multicluster"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -44,7 +46,7 @@ func (cm *ClusterManager) GetBlueprint(cluster string, namespace string, name st
 	return nil, nil
 }
 
-func (cm *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint) error {
+func (cm *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint, policies ...*networkingv1.NetworkPolicy) error {
 	return nil
 }
 

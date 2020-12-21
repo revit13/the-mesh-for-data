@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/pkg/multicluster"
+        networkingv1 "k8s.io/api/networking/v1"
 )
 
 // This ClusterManager is meant to be used for testing
@@ -28,7 +29,7 @@ func (m *ClusterManager) GetBlueprint(cluster string, namespace string, name str
 	return nil, errors.New("Blueprint not found")
 }
 
-func (m *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint) error {
+func (m *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint, policies ...*networkingv1.NetworkPolicy) error {
 	m.DeployedBlueprints[cluster] = blueprint
 	return nil
 }

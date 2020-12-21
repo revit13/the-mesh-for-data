@@ -4,10 +4,15 @@
 package app
 
 import (
+	"fmt"
+
 	app "github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/manager/controllers/app/modules"
 	"github.com/ibm/the-mesh-for-data/manager/controllers/utils"
+
 	// Temporary - shouldn't have something specific to implicit copies
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func containsTemplate(templateList []app.ComponentTemplate, moduleName string) bool {
@@ -42,6 +47,47 @@ func (r *M4DApplicationReconciler) RefineInstances(instances []modules.ModuleIns
 		newInstances = append(newInstances, moduleInstance)
 	}
 	return newInstances
+}
+
+// GenerateNetworkPolices generates kubernetes network polices to control ingress
+// traffic to the moduless
+func (r *M4DApplicationReconciler) GenerateNetworkPolices(instances []modules.ModuleInstanceSpec,
+	appContext *app.M4DApplication) []networkingv1.NetworkPolicy {
+	policies := make([]networkingv1.NetworkPolicy, 0)
+	policy := networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default-deny-ingress",
+		},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+		},
+	}
+	policies = append(policies, policy)
+
+	for _, moduleInstance := range instances {
+		if moduleInstance.Args.Read != nil {
+			policy := networkingv1.NetworkPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "allow-workload-ingress-rule",
+				},
+				Spec: networkingv1.NetworkPolicySpec{
+					PodSelector: metav1.LabelSelector{
+						MatchLabels: moduleInstance.Module.Labels,
+					},
+					PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+					// Allow traffic only from the workload
+					Ingress: []networkingv1.NetworkPolicyIngressRule{{
+						From: []networkingv1.NetworkPolicyPeer{{
+							PodSelector: appContext.Spec.Selector.DeepCopy(),
+						}},
+					}},
+				},
+			}
+			policies = append(policies, policy)
+		}
+	}
+	return policies
 }
 
 // GenerateBlueprints creates Blueprint specs (one per cluster)
@@ -107,6 +153,11 @@ func (r *M4DApplicationReconciler) GenerateBlueprint(instances []modules.ModuleI
 
 	spec.Flow = flow
 	spec.Templates = templates
+	spec.NetworkPolicies = r.GenerateNetworkPolices(instances, appContext)
+
+	for _, policy := range spec.NetworkPolicies {
+		fmt.Println(policy)
+	}
 
 	return spec
 }

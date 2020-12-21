@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 
 	"emperror.dev/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +17,7 @@ import (
 	app "github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/manager/controllers/utils"
 	corev1 "k8s.io/api/core/v1"
+	//	networkingv1 "k8s.io/api/networking/v1"
 )
 
 // ContextInterface is an interface for communication with a generated resource (e.g. Blueprint)
@@ -24,7 +26,7 @@ type ContextInterface interface {
 	CreateOrUpdateResource(owner *app.ResourceReference, ref *app.ResourceReference, blueprintPerClusterMap map[string]app.BlueprintSpec) error
 	DeleteResource(ref *app.ResourceReference) error
 	GetResourceStatus(ref *app.ResourceReference) (app.ObservedState, error)
-	CreateResourceReference(appName string, appNamespace string) (*app.ResourceReference, error)
+	CreateResourceReference(appName string, appNamespace string, labelSelector *metav1.LabelSelector) (*app.ResourceReference, error)
 	GetManagedObject() runtime.Object
 }
 
@@ -42,12 +44,34 @@ func (c *BlueprintInterface) GetManagedObject() runtime.Object {
 
 // CreateResourceReference returns reference (name and namespace) to the generated resource.
 // It also creates a namespace where the blueprint and the orchestrated resources will be running
-func (c *BlueprintInterface) CreateResourceReference(appName string, appNamespace string) (*app.ResourceReference, error) {
+func (c *BlueprintInterface) CreateResourceReference(appName string, appNamespace string, labelSelector *metav1.LabelSelector) (*app.ResourceReference, error) {
 	genNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{GenerateName: "m4d-"}}
 	genNamespace.Labels = ownerLabels(types.NamespacedName{Namespace: appNamespace, Name: appName})
 	if err := c.Client.Create(context.Background(), genNamespace); err != nil {
 		return nil, err
-	}
+	/*	policy := &networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "allow-workload-ingress-rule",
+				Namespace: genNamespace.Name,
+				Labels:    map[string]string{"razee/watch-resource": "debug"},
+			},
+			Spec: networkingv1.NetworkPolicySpec{
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+				// Allow traffic only from workload
+				Ingress: []networkingv1.NetworkPolicyIngressRule{{
+					From: []networkingv1.NetworkPolicyPeer{{
+						PodSelector: labelSelector,
+					}},
+				}},
+			},
+		}
+		fmt.Println("create network policy " + genNamespace.Name)
+		fmt.Println(policy)
+		if err := c.Client.Create(context.Background(), policy); err != nil {
+			fmt.Println(err)
+			return nil, err
+		}*/
+
 	return &app.ResourceReference{Name: appName, Namespace: genNamespace.Name, Kind: "Blueprint"}, nil
 }
 
@@ -136,7 +160,7 @@ func (c *PlotterInterface) GetManagedObject() runtime.Object {
 }
 
 // CreateResourceReference returns an identifier (name and namespace) of the generated resource.
-func (c *PlotterInterface) CreateResourceReference(appName string, appNamespace string) (*app.ResourceReference, error) {
+func (c *PlotterInterface) CreateResourceReference(appName string, appNamespace string, labelSelector *metav1.LabelSelector) (*app.ResourceReference, error) {
 	// Plotter runs in the control plane namespace. Plotter name identifies m4dapplication (name and namespace)
 	return &app.ResourceReference{Name: appName + "-" + appNamespace, Namespace: utils.GetSystemNamespace(), Kind: "Plotter"}, nil
 }

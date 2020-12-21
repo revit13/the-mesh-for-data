@@ -5,6 +5,7 @@ package v1alpha1
 
 import (
 	pb "github.com/ibm/the-mesh-for-data/pkg/connectors/protobuf"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -141,6 +142,10 @@ type BlueprintSpec struct {
 	// +required
 	// +kubebuilder::validation:MinItems:=1
 	Templates []ComponentTemplate `json:"templates"`
+
+	// List of Kubernetets network policies to apply on the blueprint namespace
+	// +optional
+	NetworkPolicies []networkingv1.NetworkPolicy `json:"networkPolicies,omitempty"`
 }
 
 // BlueprintStatus defines the observed state of Blueprint

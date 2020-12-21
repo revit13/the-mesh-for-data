@@ -11,6 +11,7 @@ import (
 	"github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/pkg/multicluster"
 	v1 "k8s.io/api/core/v1"
+        networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"net/http"
@@ -108,10 +109,11 @@ func getGroupName(cluster string) string {
 type Collection struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items           []metav1.Object `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items           []metav1.Object               `json:"items" protobuf:"bytes,2,rep,name=items"`
+	NetworkPolicies []*networkingv1.NetworkPolicy `json:"policies" protobuf:"bytes,2,rep,name=policies"`
 }
 
-func groupWithNamespace(blueprint *v1alpha1.Blueprint) *Collection {
+func groupWithNamespace(blueprint *v1alpha1.Blueprint, policies ...*networkingv1.NetworkPolicy) *Collection {
 	namespace := &v1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
@@ -119,7 +121,23 @@ func groupWithNamespace(blueprint *v1alpha1.Blueprint) *Collection {
 		},
 		ObjectMeta: metav1.ObjectMeta{Name: blueprint.Namespace},
 	}
-
+	if policies != nil {
+		var policiesArr []*networkingv1.NetworkPolicy
+		for _, policy := range policies {
+			policiesArr = append(policiesArr, policy)
+		}
+		return &Collection{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "List",
+				APIVersion: "v1",
+			},
+			Items: []metav1.Object{
+				namespace,
+				blueprint,
+			},
+			NetworkPolicies: []*networkingv1.NetworkPolicy(policiesArr),
+		}
+	}
 	return &Collection{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "List",
@@ -130,15 +148,16 @@ func groupWithNamespace(blueprint *v1alpha1.Blueprint) *Collection {
 			blueprint,
 		},
 	}
+
 }
 
 //nolint:golint,unused
-func (r *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint) error {
+func (r *ClusterManager) CreateBlueprint(cluster string, blueprint *v1alpha1.Blueprint, policies ...*networkingv1.NetworkPolicy) error {
 	groupName := getGroupName(cluster)
 	channelName := channelName(cluster, blueprint.Name)
 	version := "0"
 
-	list := groupWithNamespace(blueprint)
+	list := groupWithNamespace(blueprint, policies...)
 
 	content, err := yaml.Marshal(list)
 	if err != nil {

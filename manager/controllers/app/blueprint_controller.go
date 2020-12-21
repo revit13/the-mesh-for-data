@@ -27,7 +27,9 @@ import (
 	"github.com/ibm/the-mesh-for-data/manager/controllers/utils"
 	"github.com/ibm/the-mesh-for-data/pkg/helm"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	kstatus "sigs.k8s.io/cli-utils/pkg/kstatus/status"
 )
 
@@ -193,6 +195,17 @@ func (r *BlueprintReconciler) reconcile(ctx context.Context, log logr.Logger, bl
 	blueprint.Status.ObservedState.Ready = false
 	blueprint.Status.ObservedState.Error = ""
 	blueprint.Status.ObservedState.DataAccessInstructions = ""
+
+	for _, policy := range blueprint.Spec.NetworkPolicies {
+		policy.Namespace = blueprint.DeepCopy().Namespace
+		networkPolicy := &networkingv1.NetworkPolicy{}
+		if err := r.Get(ctx, types.NamespacedName{Namespace: policy.Namespace, Name: policy.Name}, networkPolicy); err != nil {
+			if err1 := r.Create(ctx, &policy); err1 != nil {
+				return ctrl.Result{}, errors.WithMessage(err1, "Error applying network policy")
+			}
+			log.Info(fmt.Sprintf("Created NetworkPolicy %s in %s namespace", policy.Name, policy.Namespace))
+		}
+	}
 
 	// count the overall number of Helm releases and how many of them are ready
 	numReleases, numReady := 0, 0

@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	app "github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/pkg/multicluster"
+	//	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -189,10 +190,28 @@ func (r *PlotterReconciler) reconcile(plotter *app.Plotter) (ctrl.Result, error)
 			}
 
 			plotter.Status.Blueprints[cluster] = blueprintMini
+
+			/*			selector := blueprintSpec.Selector.DeepCopy()
+						policy := &networkingv1.NetworkPolicy{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "allow-workload-ingress-rule",
+								Namespace: randomNamespace,
+							},
+							Spec: networkingv1.NetworkPolicySpec{
+								PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
+								// Allow traffic only from workload
+								Ingress: []networkingv1.NetworkPolicyIngressRule{{
+									From: []networkingv1.NetworkPolicyPeer{{
+										PodSelector: selector,
+									}},
+								}},
+							},
+						}*/
 			err := r.ClusterManager.CreateBlueprint(cluster, blueprint)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
+
 			isReady = false
 		}
 	}
