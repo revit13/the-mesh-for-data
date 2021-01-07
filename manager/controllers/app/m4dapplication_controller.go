@@ -5,32 +5,40 @@ package app
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"emperror.dev/errors"
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/vault/api"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	app "github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
 	"github.com/ibm/the-mesh-for-data/manager/controllers/app/modules"
 	"github.com/ibm/the-mesh-for-data/manager/controllers/utils"
 	pb "github.com/ibm/the-mesh-for-data/pkg/connectors/protobuf"
 	"github.com/ibm/the-mesh-for-data/pkg/multicluster"
 	local "github.com/ibm/the-mesh-for-data/pkg/multicluster/local"
-
 	pc "github.com/ibm/the-mesh-for-data/pkg/policy-compiler/policy-compiler"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	auth "k8s.io/api/authentication/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlutil "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -190,11 +198,115 @@ func (r *M4DApplicationReconciler) deleteExternalResources(applicationContext *a
 	return nil
 }
 
+// GetClientConfig returns config for accessing kubernetes
+func GetClientConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != "" {
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+	return rest.InClusterConfig()
+}
+
+// DMAClient contains the contextual info about the REST client for the M4DApplication CRD
+type DMAClient struct {
+	client    *clientset.Clientset
+	namespace string
+	plural    string
+	codec     runtime.ParameterCodec
+}
+
+const (
+	// CRDPlural is the plural name of the resource
+	CRDPlural string = "TokenReviews"
+
+	// CRDGroup is the group with which the resource is associated
+	CRDGroup string = "authentication.k8s.io"
+
+	// CRDVersion version of the resource's implementation
+	CRDVersion string = "v1"
+
+	// FullCRDName is the concatenation of the plural name + the group
+	FullCRDName string = CRDPlural + "." + CRDGroup
+)
+
+func K8sInit() (*clientset.Clientset, error) {
+	// For local testing set KUBECONFIG to $HOME/.kube/config
+	// It is unset for deployment
+
+	kubeconfigArg := ""
+	if kubeconfigpath := os.Getenv("KUBECONFIG"); kubeconfigpath != "" {
+		kubeconf := flag.String("kubeconf", kubeconfigpath, "Path to a kube config. Only required if out-of-cluster.")
+		flag.Parse()
+		kubeconfigArg = *kubeconf
+	}
+
+	config, err := GetClientConfig(kubeconfigArg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cs, err := NewForConfig(config)
+	return cs, err
+}
+
+// NewForConfig configures the client
+func NewForConfig(cfg *rest.Config) (*clientset.Clientset, error) {
+	config := *cfg
+	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: CRDGroup, Version: CRDVersion}
+	config.APIPath = "/apis"
+	config.ContentType = runtime.ContentTypeJSON
+	config.UserAgent = rest.DefaultKubernetesUserAgent()
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+
+	client, err := clientset.NewForConfig(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
 // reconcile receives either M4DApplication CRD
 // or a status update from the generated resource
 func (r *M4DApplicationReconciler) reconcile(applicationContext *app.M4DApplication) (ctrl.Result, error) {
 	utils.PrintStructure(applicationContext.Spec, r.Log, "M4DApplication")
+	ctx := context.Background()
+	genServiceAccount := &v1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "dummy-sa100", Namespace: "default"},
+	}
+	r.Client.Create(ctx, genServiceAccount)
+	serviceAccount := &v1.ServiceAccount{}
+	saSignature := types.NamespacedName{Name: "dummy-sa100", Namespace: "default"}
+	r.Client.Get(ctx, saSignature, serviceAccount)
+	secretName := serviceAccount.Secrets[0].Name
+	//secretName := "bla"
+	fmt.Println("secretNamexxx")
+	fmt.Println(serviceAccount.Name)
+	fmt.Println(len(serviceAccount.Secrets))
+	secretSignature := types.NamespacedName{Name: secretName, Namespace: "default"}
+	secret := &v1.Secret{}
+	r.Client.Get(ctx, secretSignature, secret)
+	token := secret.Data["token"]
+	fmt.Println("TOKEN")
+	fmt.Println(token)
 
+	client1, err := K8sInit()
+
+	genTokenReview := &auth.TokenReview{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TokenReview",
+			APIVersion: "authentication.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "TokenReview1", Namespace: "default"},
+		Spec:       auth.TokenReviewSpec{Token: string(token)},
+	}
+	trev, err := client1.AuthenticationV1().TokenReviews().Create(ctx, genTokenReview, metav1.CreateOptions{})
+	fmt.Println("REVITAL")
+	fmt.Println(trev.Status.User.Username)
 	// Data User created or updated the M4DApplication
 
 	// clear status

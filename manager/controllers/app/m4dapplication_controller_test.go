@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"time"
@@ -16,6 +17,7 @@ import (
 	pb "github.com/ibm/the-mesh-for-data/pkg/connectors/protobuf"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	auth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -565,6 +567,45 @@ var _ = Describe("M4DApplication Controller", func() {
 		})
 
 		It("Test end-to-end for M4DApplication with arrow-flight module", func() {
+			genServiceAccount := &v1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ServiceAccount",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{Name: "dummy-sa100", Namespace: "default"},
+			}
+			k8sClient.Create(context.Background(), genServiceAccount)
+			serviceAccount := &v1.ServiceAccount{}
+			saSignature := types.NamespacedName{Name: "dummy-sa100", Namespace: "default"}
+			k8sClient.Get(context.Background(), saSignature, serviceAccount)
+			//secretName := serviceAccount.Secrets[0].Name
+			secretName := "bla"
+			fmt.Println("secretNameTEST")
+			fmt.Println(serviceAccount.Name)
+			fmt.Println(len(serviceAccount.Secrets))
+			secretSignature := types.NamespacedName{Name: secretName, Namespace: "default"}
+			secret := &v1.Secret{}
+			k8sClient.Get(context.Background(), secretSignature, secret)
+			token := secret.Data["token"]
+			fmt.Println("TOKEN13")
+			fmt.Println(token)
+			genTokenReview := &auth.TokenReview{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "TokenReview",
+					APIVersion: "authentication.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{Name: "TokenReview1", Namespace: "default"},
+				Spec:       auth.TokenReviewSpec{Token: string(token)},
+			}
+			k8sClient.Create(context.Background(), genTokenReview)
+
+			fmt.Println("REVITAL13")
+			tokenReview := &auth.TokenReview{}
+			appSignature := types.NamespacedName{Name: "TokenReview1", Namespace: "default"}
+			k8sClient.Get(context.Background(), appSignature, tokenReview)
+			fmt.Println("REVITAL13")
+			fmt.Println(tokenReview.Status.User.Username)
+			fmt.Println(tokenReview.Status.User.UID)
 			var err error
 			readModuleYAML, err := ioutil.ReadFile("../../testdata/e2e/module-read.yaml")
 			Expect(err).ToNot(HaveOccurred())

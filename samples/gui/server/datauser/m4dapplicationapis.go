@@ -19,6 +19,15 @@ import (
 var dmaClient *DMAClient
 
 // DMARoutes is a list of the REST APIs supported by the backend of the Data User GUI
+func GetSecret(client *DMAClient) *chi.Mux {
+	dmaClient = client // global variable used by all funcs in this package
+
+	router := chi.NewRouter()
+	router.Get("/{temp}", GetSecretFromBackend) // Returns the M4DApplication CRD including its status
+	return router
+}
+
+// DMARoutes is a list of the REST APIs supported by the backend of the Data User GUI
 func DMARoutes(client *DMAClient) *chi.Mux {
 	dmaClient = client // global variable used by all funcs in this package
 
@@ -85,6 +94,12 @@ func GetM4DApplication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	render.JSON(w, r, dma) // Return the M4DApplication as json
+}
+
+func GetSecretFromBackend(w http.ResponseWriter, r *http.Request) {
+	log.Println("In GetSecret")
+	datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
+	render.JSON(w, r, datasetCreds) // Return the M4DApplication as json
 }
 
 // UpdateM4DApplication changes the desired state of an existing M4DApplication CRD

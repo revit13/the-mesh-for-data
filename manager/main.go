@@ -109,6 +109,52 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrlOps)
 
+	/*ctx := context.Background()
+	//var trueVar = true
+	saName := "dummy123"
+	genServiceAccount := &v1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: saName, Namespace: "default"},
+		//AutomountServiceAccountToken: &trueVar,
+	}
+	mgr.GetClient().Create(ctx, genServiceAccount)
+	serviceAccount := &v1.ServiceAccount{}
+	saSignature := types.NamespacedName{Name: saName, Namespace: "default"}
+	mgr.GetClient().Get(ctx, saSignature, serviceAccount)
+	//secretName := serviceAccount.Secrets[0].Name
+	secretName := "bla"
+	fmt.Println("secretName14")
+	fmt.Println(serviceAccount.Name)
+	//fmt.Println(serviceAccount.Name)
+	fmt.Println(len(serviceAccount.Secrets))
+	secretSignature := types.NamespacedName{Name: secretName, Namespace: "default"}
+	secret := &v1.Secret{}
+	mgr.GetClient().Get(ctx, secretSignature, secret)
+	token := secret.Data["token"]
+	fmt.Println("TOKEN")
+	fmt.Println(token)
+	genTokenReview := &auth.TokenReview{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TokenReview",
+			APIVersion: "authentication.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: "TokenReview1", Namespace: "default"},
+		Spec:       auth.TokenReviewSpec{Token: string(token)},
+	}
+	mgr.GetClient().Create(ctx, genTokenReview)
+	fmt.Println("REVITAL")
+	tokenReview := &auth.TokenReview{}
+	appSignature := types.NamespacedName{Name: "TokenReview1", Namespace: "default"}
+	mgr.GetClient().Get(ctx, appSignature, tokenReview)
+	fmt.Println("REVITAL")
+	fmt.Println(tokenReview.Status.User.Username)
+	fmt.Println(tokenReview.Status.User.UID)*/
+	//mgr.GetClient().Delete(ctx, serviceAccount)
+	// Data User created or updated the M4DApplication
+
 	// Initialize ClusterManager
 	clusterManager := NewClusterManager(mgr)
 

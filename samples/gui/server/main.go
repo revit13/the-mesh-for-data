@@ -27,6 +27,10 @@ func Routes(client *dma.DMAClient) *chi.Mux {
 		middleware.Recoverer,       // Recover from panics without crashing server
 	)
 
+	router.Route("/v1/m4d", func(r chi.Router) {
+		r.Mount("/get-secret", dma.GetSecret(client))
+	})
+
 	router.Route("/v1/dma", func(r chi.Router) {
 		r.Mount("/m4dapplication", dma.DMARoutes(client))
 	})
