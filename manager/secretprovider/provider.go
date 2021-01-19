@@ -19,7 +19,7 @@ import (
 
 type secretProvider struct {
 	client.Client
-	clientset.Clientset // For API server
+	clientset.Clientset // For TokenReview requests
 	Log                 logr.Logger
 }
 
@@ -64,7 +64,7 @@ func FireUpSecretProviderServer() {
 	log := provider.Log
 
 	// Print out Secret-provider APIs
-	log.Info("Server listening on port 80")
+	log.Info(fmt.Sprintf("Server listening on port 5556"))
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		log.Info(fmt.Sprintf("%s %s\n", method, route)) // Walk and print out all routes
 		return nil
@@ -76,7 +76,7 @@ func FireUpSecretProviderServer() {
 	}
 
 	// TODO: Should be https server
-	err := http.ListenAndServe(":80", router) // Note, the port is usually gotten from the environment.
+	err := http.ListenAndServe(fmt.Sprintf(":5556"), router) // Note, the port is usually gotten from the environment.
 	log.Error(err, "SecretProvider Server exited")
 	os.Exit(1)
 }

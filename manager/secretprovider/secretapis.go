@@ -4,13 +4,19 @@
 package secretprovider
 
 import (
+	"context"
+	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
+	auth "k8s.io/api/authentication/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 /*func GetSecretFromBackend(w http.ResponseWriter, r *http.Request) {
@@ -19,55 +25,80 @@ import (
 	render.JSON(w, r, datasetCreds) // Return the M4DApplication as json
 }*/
 
-// requestSecretInfo contains the information needed for a module to retrieve a token.
-type requestSecretInfo struct {
-	SecretName string `json:"secret_name"`
-	Token      string `json:"token"` //service account token
-}
-
 func GetSecretFromBackend(w http.ResponseWriter, r *http.Request) {
 	log := provider.Log
-
-	var requestInfo requestSecretInfo
+	ctx := context.Background()
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 
 	secret := r.URL.Query().Get("secret")
-
-	token := r.Header.Get("Authorization")
-
 	if secret == "" {
 		err := errors.New("Url Param 'secret' is missing")
-
 		suberr := render.Render(w, r, ErrInvalidRequest(err))
 		if suberr != nil {
-			log.Error(err, fmt.Sprintf(err.Error()))
+			log.Error(err, fmt.Sprintf("GetSecretFromBackend Failed: %s", err.Error()))
 		}
 		return
 	}
 
-	fmt.Println("TOKENxxx")
-	fmt.Println(requestInfo.Token)
-	log.Info(fmt.Sprintf(fmt.Sprintf("In GetSecretFromBackend token %s\n secret_name: %s\n", token, secret)))
-	/*
-		genTokenReview := &auth.TokenReview{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "TokenReview",
-				APIVersion: "authentication.k8s.io/v1",
-			},
-			ObjectMeta: metav1.ObjectMeta{Name: "TokenReview1", Namespace: "default"},
-			Spec:       auth.TokenReviewSpec{Token: string(token)},
+	tokenBase64Encoded := r.Header.Get("Authorization")
+	if tokenBase64Encoded == "" {
+		err := errors.New("Authorization Token is missing from header")
+		suberr := render.Render(w, r, ErrInvalidRequest(err))
+		if suberr != nil {
+			log.Error(err, fmt.Sprintf("GetSecretFromBackend Failed: %s", err.Error()))
 		}
-		trev, err := authClient.AuthenticationV1().TokenReviews().Create(ctx, genTokenReview, metav1.CreateOptions{})
-		if err != nil {
-			log.Info(fmt.Sprintf(fmt.Sprintf("TokenReview Authentication failed for token %s", token)))
-			render.Status(r, http.StatusForbidden)
-			return
+		return
+	}
+	token, _ := b64.URLEncoding.DecodeString(tokenBase64Encoded)
+
+	random := rand.String(5)
+	randomTokenReviewName := "m4d-token-review-" + random
+
+	log.Info(fmt.Sprintf(fmt.Sprintf("In GetSecretFromBackend created tokenReview %s\n", randomTokenReviewName)))
+
+	authClient := provider.Clientset
+	genTokenReview := &auth.TokenReview{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TokenReview",
+			APIVersion: "authentication.k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{Name: randomTokenReviewName, Namespace: "default"},
+		Spec:       auth.TokenReviewSpec{Token: string(token)},
+	}
+	trev, err := authClient.AuthenticationV1().TokenReviews().Create(ctx, genTokenReview, metav1.CreateOptions{})
+
+	if err != nil {
+		suberr := render.Render(w, r, ErrInvalidRequest(err))
+		if suberr != nil {
+			log.Error(err, fmt.Sprintf("GetSecretFromBackend Failed: %s", err.Error()))
 		}
-		log.Info(fmt.Sprintf("Username from TokenReviews: %s", trev.Status.User.Username))
-		datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
-		render.Status(r, http.StatusOK)
-		render.JSON(w, r, datasetCreds)*/
+		return
+	}
+	// Check the status of the TokenReviews
+	if !trev.Status.Authenticated {
+		err := errors.New("Authorization Token is not Authenticated by TokenReview")
+		suberr := render.Render(w, r, ErrForbiddenRequest(err))
+		if suberr != nil {
+			log.Error(err, fmt.Sprintf("GetSecretFromBackend Failed: %s", err.Error()))
+		}
+		return
+	}
+
+	module := trev.Status.User.Username
+	log.Info(fmt.Sprintf("REVIT   GetSecretFromBackend Failed: %s", module))
+	if !strings.HasPrefix(module, "system:serviceaccount:"+"m4d-system") {
+		err := errors.New("Module is not authorized to access secret")
+		suberr := render.Render(w, r, ErrForbiddenRequest(err))
+		if suberr != nil {
+			log.Error(err, fmt.Sprintf("GetSecretFromBackend Failed: %s", err.Error()))
+		}
+		return
+	}
+
+	datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
+	render.Status(r, http.StatusOK)
+	render.JSON(w, r, datasetCreds)
 }
 
 // handleSecret is a list of the REST APIs supported by the secret provider

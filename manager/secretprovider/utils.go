@@ -19,7 +19,6 @@ type ErrResponse struct {
 	HTTPStatusCode int   `json:"-"` // http response status code
 
 	StatusText string `json:"status"`          // user-level status message
-	AppCode    int64  `json:"code,omitempty"`  // application-specific error code
 	ErrorText  string `json:"error,omitempty"` // application-level error message, for debugging
 }
 
@@ -35,6 +34,26 @@ func ErrInvalidRequest(err error) render.Renderer {
 		Err:            err,
 		HTTPStatusCode: 400,
 		StatusText:     "Invalid request.",
+		ErrorText:      err.Error(),
+	}
+}
+
+// ErrConfigProblem indicates a problem with the environment configuration
+func ErrConfigProblem(err error) render.Renderer {
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: http.StatusInternalServerError,
+		StatusText:     "Configuration problem.",
+		ErrorText:      err.Error(),
+	}
+}
+
+// ErrForbiddenRequest creates a structure describing forbidden request
+func ErrForbiddenRequest(err error) render.Renderer {
+	return &ErrResponse{
+		Err:            err,
+		HTTPStatusCode: http.StatusForbidden,
+		StatusText:     "Forbidden request.",
 		ErrorText:      err.Error(),
 	}
 }
