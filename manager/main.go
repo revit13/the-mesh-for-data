@@ -118,9 +118,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	var vaultClient *api.Client
+	var errVaultSetup error
 	if enableApplicationController || enableAllControllers {
 		// Initiate vault client
-		vaultClient, errVaultSetup := initVaultConnection()
+		vaultClient, errVaultSetup = initVaultConnection()
 		if errVaultSetup != nil {
 			setupLog.Error(errVaultSetup, "Error setting up vault")
 			os.Exit(1)
@@ -160,22 +162,30 @@ func main() {
 		motion.SetupMotionControllers(mgr)
 	}
 
-	secretprovider.SetupSecretProvider(mgr.GetClient())
-
-	go secretprovider.FireUpSecretProviderServer()
-
 	// +kubebuilder:scaffold:builder
+	go mgr.Start(ctrl.SetupSignalHandler())
 
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
+	//secret provider needs the controller-runtime client cache setup before running
+	//otherwise it gets error
+	secretprovider.SetupSecretProvider(mgr.GetClient())
+	secretprovider.FireUpSecretProviderServer()
+
+	os.Exit(1)
+	/*
+		// +kubebuilder:scaffold:builder
+
+		setupLog.Info("starting manager")
+		if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+			setupLog.Error(err, "problem running manager")
+			os.Exit(1)
+		}
+	*/
 }
 
 // init vault client and mount the base directory for storing credentials
 func initVaultConnection() (*api.Client, error) {
-	token := utils.GetVaultToken()
+	return nil, nil
+	/*token := utils.GetVaultToken()
 	if err := utils.MountDatasetVault(token); err != nil {
 		return nil, err
 	}
@@ -201,7 +211,7 @@ func initVaultConnection() (*api.Client, error) {
 		setupLog.Info("Could not create a role " + utils.GetSecretProviderRole() + " : " + err.Error())
 		return vaultClient, err
 	}
-	return vaultClient, nil
+	return vaultClient, nil*/
 }
 
 // This method decides based on the environment variables that are set which

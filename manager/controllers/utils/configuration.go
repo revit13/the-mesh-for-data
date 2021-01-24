@@ -26,6 +26,7 @@ const (
 	VaultAuthKey                        string = "VAULT_AUTH"
 	SecretProviderURL                   string = "SECRET_PROVIDER_URL"
 	SecretProviderRole                  string = "SECRET_PROVIDER_ROLE"
+        SecretProviderPort                  string = "SECRET_PROVIDER_PORT"
 )
 
 // GetSystemNamespace returns the namespace of control plane
@@ -36,6 +37,11 @@ func GetSystemNamespace() string {
 		}
 	}
 	return "default"
+}
+
+// GetSecretProviderURL returns the secret provider port
+func GetSecretProviderPort() string {
+        return os.Getenv(SecretProviderPort)
 }
 
 // GetSecretProviderURL returns the path to secret provider

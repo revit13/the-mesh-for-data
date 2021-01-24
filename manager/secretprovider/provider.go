@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-logr/logr"
+	"github.com/ibm/the-mesh-for-data/manager/controllers/utils"
 	clientset "k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,6 +56,13 @@ func SetupSecretProvider(client client.Client) {
 	}
 
 	provider = secretProvider{client, *cs, ctrl.Log.WithName("Secretprovider")}
+
+	// Setup secret store
+	err = SecretStoreSetUp()
+	if err != nil {
+		setupLog.Error(err, "Failed setup secret store!")
+		os.Exit(1)
+	}
 }
 
 func FireUpSecretProviderServer() {
@@ -64,7 +72,7 @@ func FireUpSecretProviderServer() {
 	log := provider.Log
 
 	// Print out Secret-provider APIs
-	log.Info(fmt.Sprintf("Server listening on port 5556"))
+	log.Info(fmt.Sprintf("Server listening on port %s", utils.GetSecretProviderPort()))
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		log.Info(fmt.Sprintf("%s %s\n", method, route)) // Walk and print out all routes
 		return nil
@@ -76,7 +84,8 @@ func FireUpSecretProviderServer() {
 	}
 
 	// TODO: Should be https server
-	err := http.ListenAndServe(fmt.Sprintf(":5556"), router) // Note, the port is usually gotten from the environment.
+	//err := http.ListenAndServe(fmt.Sprintf(":%s", utils.GetSecretProviderPort()), router)
+	err := http.ListenAndServe(fmt.Sprintf(":8083"), router)
 	log.Error(err, "SecretProvider Server exited")
 	os.Exit(1)
 }

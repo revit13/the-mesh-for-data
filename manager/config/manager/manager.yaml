@@ -48,13 +48,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: controller-manager
+  name: controller-manager 
   namespace: system
   labels:
     control-plane: controller-manager
 spec:
   ports:
-  - port: 5556
+  - port: 8083
+    targetPort: 8083 
     name: http
   selector:
     control-plane: controller-manager

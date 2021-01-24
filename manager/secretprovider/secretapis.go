@@ -21,14 +21,15 @@ import (
 const tokenReviewNamespace = "default"
 const serviceAccountPrefix = "system:serviceaccount:"
 
-/*func GetSecretFromBackend(w http.ResponseWriter, r *http.Request) {
+func getSecret(credentialsLocation string) (string, error) {
 	log := provider.Log
-	ctx := context.Background()
+	//	ctx := context.Background()
 
-	log.Info(fmt.Sprintf("REVIT   GetSecretFromBackend Failed: %s", module))
-	datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
-	render.JSON(w, r, datasetCreds) // Return the M4DApplication as json
-}*/
+	//log.Info(fmt.Sprintf("REVIT   GetSecretFromBackend Failed: %s", module))
+	//datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
+	return GetSecret(credentialsLocation, log)
+	//#render.JSON(w, r, datasetCreds) // Return the M4DApplication as json
+}
 
 // Check if the sevice account token is authorized to access the secret.
 func isAuthorized(token string) error {
@@ -65,6 +66,7 @@ func isAuthorized(token string) error {
 	if !strings.HasPrefix(module, serviceAccountPrefix+"m4d-system") {
 		return err
 	}
+
 	return nil
 }
 
@@ -106,7 +108,8 @@ func GetSecretFromBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
+	datasetCreds, err := getSecret(secret)
+	//datasetCreds := `{"access_key": "x", "secret_key": "x"}"`
 	render.Status(r, http.StatusOK)
 	render.JSON(w, r, datasetCreds)
 }

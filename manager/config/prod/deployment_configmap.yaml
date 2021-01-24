@@ -8,6 +8,7 @@ metadata:
 data:
   SECRET_PROVIDER_URL: "http://secret-provider.m4d-system:5555/get-secret"
   SECRET_PROVIDER_ROLE: "demo"
+  SECRET_PROVIDER_PORT: "5556"
   #catalog connector
   CATALOG_CONNECTOR_URL: "egr-connector:50084"
   CATALOG_PROVIDER_NAME: "EGERIA"
