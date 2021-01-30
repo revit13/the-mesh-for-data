@@ -5,6 +5,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 
@@ -211,7 +212,8 @@ func main() {
 // init vault client and mount the base directory for storing credentials
 func initVaultConnection() (*api.Client, error) {
 	token := utils.GetVaultToken()
-	if err := utils.MountDatasetVault(token); err != nil {
+	setupLog.Info(fmt.Sprintf("REVIT %s", token))
+	if err := utils.MountDatasetVault(token, utils.GetVaultAddress()); err != nil {
 		return nil, err
 	}
 	vaultClient, err := utils.InitVault(token)
@@ -232,7 +234,7 @@ func initVaultConnection() (*api.Client, error) {
 
 	setupLog.Info("Assigning the policy to " + "/role/" + utils.GetSecretProviderRole())
 	// Link the policy to the authentication role (configured)
-	if err = utils.LinkVaultPolicyToIdentity("/role/"+utils.GetSecretProviderRole(), policyName, vaultClient); err != nil {
+	if err = utils.LinkVaultPolicyToIdentity("/role/"+utils.GetSecretProviderRole(), policyName, "*", app.BlueprintNamespace, vaultClient); err != nil {
 		setupLog.Info("Could not create a role " + utils.GetSecretProviderRole() + " : " + err.Error())
 		return vaultClient, err
 	}

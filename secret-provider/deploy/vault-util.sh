@@ -9,7 +9,7 @@
 : ${DATA_PROVIDER_USERNAME:=data_provider}
 : ${DATA_PROVIDER_PASSWORD:=password}
 : ${KUBERNETES_AUTH_ROLE:=demo}
-: ${SECRET_PATH:=secret}
+: ${SECRET_PATH:=secret_new}
 
 # Controls the auth mechanism to enable
 #   - "K8S" for k8s auth method
@@ -24,7 +24,7 @@ enable_kv() {
   curl \
     --header "X-Vault-Token: $2" \
     --request POST \
-    --data '{"type": "kv", "options": {"version": "1"} }' \
+    --data '{"type": "kv", "options": {"version": "2"} }' \
     http://127.0.0.1:"$PORT_TO_FORWARD"/v1/sys/mounts/"$1"
   
   #Equivalent using the CLI:

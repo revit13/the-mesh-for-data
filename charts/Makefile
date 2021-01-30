@@ -1,5 +1,7 @@
 ROOT_DIR := ..
 include $(ROOT_DIR)/Makefile.env
+: ${WITHOUT_OPENSHIFT:=true}
+: ${KUBE_NAMESPACE:=m4d-system}
 
 .PHONY: kind
 kind: export ROOT_DIR := .
@@ -17,6 +19,11 @@ cert-manager:
 		--namespace cert-manager \
 		--wait --timeout 120s
 
+vault_uninstall:
+	helm delete vault --namespace=m4d-system \
+	2>/dev/null || true
+
+
 .PHONY: vault
 vault:
 	@echo "Installing vault ..."
@@ -24,6 +31,8 @@ vault:
 	helm install vault hashicorp/vault --version 0.8.0 \
                 --set "global.openshift=false" \
                 --set "server.dev.enabled=true" \
+                --namespace m4d-system \
+                --set "-dev-root-token-id=root" \
 		--wait --timeout 120s
 
 .PHONY:
