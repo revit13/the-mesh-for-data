@@ -6,9 +6,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -23,7 +21,8 @@ var httpClient = &http.Client{
 // LinkVaultPolicyToIdentity registers a policy for a given identity or role, meaning that when a person or service
 // of that identity logs into vault and tries to read or write a secret the provided policy
 // will determine whether that is allowed or not.
-func LinkVaultPolicyToIdentity(identity string, policyName string, vaultClient *api.Client) error {
+func LinkVaultPolicyToIdentity(identity string, policyName string, service_account_names string,
+	service_account_namespaces string, vaultClient *api.Client) error {
 	if RunWithoutVaultHook() {
 		return nil
 	}
@@ -231,24 +230,15 @@ func AddToVault(id string, credentials map[string]interface{}, vaultClient *api.
 	return vaultDatasetPath, nil
 }
 
-// GetFullCredentialsPath returns the path to be used for credentials retrieval
-func GetFullCredentialsPath(secretName string) string {
-	base := GetSecretProviderURL() + "?role=" + GetSecretProviderRole() + "&secret_name="
-	return fmt.Sprintf("%s%s", base, url.QueryEscape(secretName))
-}
-
-// GetUserCredentialsVaultPath returns the path that can be used externally to retrieve user credentials for a specific system and label (associated with compute)
-// It is of the form <secret-provider-url>/v1/m4d-system/user-creds/{namespace}/{name}/{system}
-func GetUserCredentialsVaultPath(namespace string, name string, system string) string {
-	secretName := "/v1/" + GenerateUserCredentialsSecretName(namespace, name, system)
-	return GetFullCredentialsPath(secretName)
-}
-
 // GetDatasetVaultPath returns the path that can be used externally to retrieve a dataset's credentials
 // It is of the form <secret-provider-url>/v1/m4d-system/dataset-creds/...
-func GetDatasetVaultPath(assetID string) string {
+func GetSecretPath(assetID string) string {
 	secretName := "/v1/" + GetVaultDatasetHome() + assetID
-	return GetFullCredentialsPath(secretName)
+	return secretName
+}
+
+func GetVaultRole(assetID string) string {
+	return GetSecretProviderRole()
 }
 
 // InitVaultAuth initiates the authentication mechanism used to obtain vault tokens.
@@ -300,13 +290,13 @@ func MountUserVault(token string) error {
 
 // MountDatasetVault mounts a key-value secret provider (kv version 1) to manage the storage
 // of the dataset credentials
-func MountDatasetVault(token string) error {
+func MountDatasetVault(token string, vaultAddress string) error {
 	if RunWithoutVaultHook() {
 		return nil
 	}
 
 	body := strings.NewReader(`{"type":"kv-v1"}`)
-	url := GetVaultAddress() + GetVaultDatasetMountPath() // GetVaultDatasetHome()
+	url := vaultAddress + GetVaultDatasetMountPath() // GetVaultDatasetHome()
 	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		msg := "Error creating request to mount vault for dataset credentials " + url + ":" + err.Error()

@@ -67,13 +67,11 @@ install:
 
 .PHONY: deploy
 deploy:
-	$(MAKE) -C secret-provider deploy
 	$(MAKE) -C manager deploy
 	$(MAKE) -C connectors deploy
 
 .PHONY: undeploy
 undeploy:
-	$(MAKE) -C secret-provider undeploy
 	$(MAKE) -C manager undeploy
 	$(MAKE) -C manager undeploy-crd
 	$(MAKE) -C connectors undeploy
