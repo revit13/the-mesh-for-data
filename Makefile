@@ -29,6 +29,7 @@ run-integration-tests:
 	$(MAKE) docker
 	$(MAKE) -C test/services docker-all
 	$(MAKE) cluster-prepare-wait
+	$(MAKE) configure-vault
 	$(MAKE) -C secret-provider configure-vault
 	$(MAKE) -C secret-provider deploy
 	$(MAKE) -C manager deploy-crd
@@ -42,6 +43,8 @@ run-deploy-tests: export KUBE_NAMESPACE?=m4d-system
 run-deploy-tests:
 	$(MAKE) kind
 	$(MAKE) cluster-prepare
+	$(MAKE) cluster-prepare-wait
+	$(MAKE) configure-vault
 	kubectl config set-context --current --namespace=$(KUBE_NAMESPACE)
 	$(MAKE) -C third_party/opa deploy
 	kubectl apply -f ./manager/config/prod/deployment_configmap.yaml
@@ -146,3 +149,4 @@ endif
 include hack/make-rules/tools.mk
 include hack/make-rules/verify.mk
 include hack/make-rules/cluster.mk
+include hack/make-rules/vault.mk

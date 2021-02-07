@@ -9,6 +9,7 @@ op=$1
 source ./common.sh
 
 K8S_VERSION=${K8S_VERSION:-v1.16.9}
+: ${KUBE_NAMESPACE:=m4d-system}
 
 registry_delete() {
     docker network disconnect kind kind-registry
@@ -94,11 +95,33 @@ kind_create() {
         done
 }
 
+# Taken from https://kind.sigs.k8s.io/docs/user/ingress/
+install_nginx_ingress() {
+        kubectl config use-context kind-"$1"
+        kubectl create ns "$KUBE_NAMESPACE" || true
+
+        echo Install ingress-nginx
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
+        kubectl wait --namespace ingress-nginx \
+          --for=condition=ready pod \
+          --selector=app.kubernetes.io/component=controller \
+          --timeout=90s
+        kubectl apply -f ingress-nginx.yaml -n "$KUBE_NAMESPACE"
+}
+
+uninstall_nginx_ingress() {
+        kubectl config use-context kind-"$1" --namespace="$KUBE_NAMESPACE"
+        kubectl delete -f ingress-nginx.yaml
+        kubectl delete -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
+}
+
+
 case "$op" in
     cleanup)
         header_text "Uninstalling kind cluster"
         registry_delete || true
         certs_delete || true
+        uninstall_nginx_ingress control || true
         kind_delete kind || true
         kind_delete control || true
         ;;
@@ -109,6 +132,8 @@ case "$op" in
         kind_create kind kind-config.yaml &
         kind_create control kind-control-config.yaml &
         wait
+        install_nginx_ingress control &
+        wait
         registry_create
         ;;
     *)
@@ -116,6 +141,7 @@ case "$op" in
         certs_create
         install_certs
         kind_create kind kind-config.yaml
+        wait
         registry_create
         ;;
 esac
