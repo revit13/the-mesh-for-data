@@ -132,7 +132,7 @@ func (m *ModuleManager) GetCopyDestination(item modules.DataInfo, destinationInt
 	}
 
 	return &app.DataStore{
-		CredentialLocation: utils.GetFullCredentialsPath(utils.GetDatasetVaultPath(bucket.Name)),
+		CredentialLocation: utils.GetDatasetVaultPath(bucket.Name),
 		Vault:              vault,
 		Connection:         *connection,
 		Format:             string(destinationInterface.DataFormat),
