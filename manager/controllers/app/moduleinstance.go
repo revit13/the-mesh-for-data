@@ -126,7 +126,7 @@ func (m *ModuleManager) GetCopyDestination(item modules.DataInfo, destinationInt
 
 
 	vault := app.Vault{
-		SecretPath: utils.GetSecretPath(utils.GetDatasetVaultPath(bucket.Name)),
+		SecretPath: utils.GetSecretPath(bucket.Name),
 		Role:            utils.GetModulesRole(),
 		Address:         utils.GetVaultAddress(),
 	}
