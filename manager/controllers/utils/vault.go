@@ -252,12 +252,12 @@ func GetDatasetVaultPath(assetID string) string {
 }
 
 func GetSecretPath(assetID string) string {
-	secretName := "/v1/" + GetVaultDatasetHome() + assetID
-	return secretName
+        base := "v1/" + GetVaultDatasetHome()
+	return fmt.Sprintf("%s%s", base, url.QueryEscape(assetID))
 }
 
 func GetAuthPath(authPath string) string {
-	fullAuthPath := fmt.Sprintf("/v1/auth/%s/login", authPath)
+	fullAuthPath := fmt.Sprintf("v1/auth/%s/login", authPath)
 	return fullAuthPath
 }
 
