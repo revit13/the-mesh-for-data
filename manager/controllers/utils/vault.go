@@ -255,7 +255,7 @@ func GetDatasetVaultPath(assetID string) string {
 // It is of the form v1/m4d-system/dataset-creds/...
 func GetSecretPath(assetID string) string {
         base := "v1/" + GetVaultDatasetHome()
-	return fmt.Sprintf("%s%s", base, url.QueryEscape(assetID))
+	return fmt.Sprintf("%s%s", base, url.PathEscape(assetID))
 }
 
 // GetAuthPath returns the auth method path to use
