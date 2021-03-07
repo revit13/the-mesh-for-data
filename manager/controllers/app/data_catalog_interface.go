@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"google.golang.org/grpc"
 
 	app "github.com/ibm/the-mesh-for-data/manager/apis/app/v1alpha1"
@@ -68,6 +69,7 @@ func GetConnectionDetails(req *modules.DataInfo, input *app.M4DApplication) erro
 		Connection: *connection,
 		Metadata:   details.Metadata,
 	}
+	req.VaultSecretPath = details.CredentialsInfo.VaultSecretPath
 
 	return nil
 }

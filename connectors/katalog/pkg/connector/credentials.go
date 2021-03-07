@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/ibm/the-mesh-for-data/connectors/katalog/pkg/connector/utils"
 	"github.com/ibm/the-mesh-for-data/connectors/katalog/pkg/taxonomy"
 	connectors "github.com/ibm/the-mesh-for-data/pkg/connectors/protobuf"
 	"github.com/pkg/errors"
@@ -22,7 +23,7 @@ type DataCredentialsService struct {
 }
 
 func (s *DataCredentialsService) GetCredentialsInfo(ctx context.Context, req *connectors.DatasetCredentialsRequest) (*connectors.DatasetCredentials, error) {
-	namespace, name, err := splitNamespacedName(req.DatasetId)
+	namespace, name, err := utils.SplitNamespacedName(req.DatasetId)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (s *DataCredentialsService) GetCredentialsInfo(ctx context.Context, req *co
 	authn := &taxonomy.Authentication{}
 	switch secret.Type {
 	case corev1.SecretTypeOpaque:
-		err = decodeToStruct(data, authn)
+		err = utils.DecodeToStruct(data, authn)
 		if err != nil {
 			return nil, errors.Wrap(err, "Invalid fields in Secret data")
 		}
@@ -79,10 +80,10 @@ func (s *DataCredentialsService) GetCredentialsInfo(ctx context.Context, req *co
 	return &connectors.DatasetCredentials{
 		DatasetId: req.DatasetId,
 		Creds: &connectors.Credentials{
-			AccessKey: emptyIfNil(authn.AccessKey),
-			SecretKey: emptyIfNil(authn.SecretKey),
-			ApiKey:    emptyIfNil(authn.ApiKey),
-			Username:  emptyIfNil(authn.Username),
-			Password:  emptyIfNil(authn.Password),
+			AccessKey: utils.EmptyIfNil(authn.AccessKey),
+			SecretKey: utils.EmptyIfNil(authn.SecretKey),
+			ApiKey:    utils.EmptyIfNil(authn.ApiKey),
+			Username:  utils.EmptyIfNil(authn.Username),
+			Password:  utils.EmptyIfNil(authn.Password),
 		}}, nil
 }
