@@ -7,7 +7,7 @@ import (
 	"net/url"
 )
 
-// The Vault plugin to use to retrive the dataset credential
+// The Vault plugin to use to retrieve the dataset credential
 const vaultPluginPath = "kubernetes-secrets-reader"
 
 // VaultSecretPath returns the path to Vault secret that holds the dataset credential.
